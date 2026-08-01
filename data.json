@@ -1,0 +1,289 @@
+{
+  "app": {
+    "name": "Demerit BenTech",
+    "subtitle": "School Discipline & Demerit Management System",
+    "version": "2.0 Prototype"
+  },
+  "users": [
+    {
+      "id": "u1",
+      "username": "jpa01",
+      "password": "password",
+      "role": "JPA",
+      "name": "JPA Supervisor"
+    },
+    {
+      "id": "u2",
+      "username": "ldp01",
+      "password": "password",
+      "role": "LDP",
+      "name": "LDP Officer"
+    },
+    {
+      "id": "u3",
+      "username": "admin01",
+      "password": "password",
+      "role": "Admin",
+      "name": "Discipline Admin"
+    },
+    {
+      "id": "u4",
+      "username": "teacher01",
+      "password": "password",
+      "role": "Admin",
+      "name": "Teacher / Admin"
+    }
+  ],
+  "students": [
+    {
+      "id": "s1001",
+      "name": "Ammar Zafri Rizqullah Bin Mohd Yusof",
+      "noMaktab": "CB231068",
+      "className": "Form 4 Ibnu Khaldun",
+      "gender": "Male",
+      "status": "Active",
+      "currentDemerit": 0
+    },
+    {
+      "id": "s1002",
+      "name": "Nur Aina Binti Ahmad",
+      "noMaktab": "CB231069",
+      "className": "Form 4 Ibnu Khaldun",
+      "gender": "Female",
+      "status": "Active",
+      "currentDemerit": 0
+    },
+    {
+      "id": "s1003",
+      "name": "Muhammad Hakim Bin Razali",
+      "noMaktab": "CB231070",
+      "className": "Form 5 Al-Biruni",
+      "gender": "Male",
+      "status": "Active",
+      "currentDemerit": 0
+    },
+    {
+      "id": "s1004",
+      "name": "Siti Khadijah Binti Ibrahim",
+      "noMaktab": "CB231071",
+      "className": "Form 5 Al-Biruni",
+      "gender": "Female",
+      "status": "Active",
+      "currentDemerit": 0
+    },
+    {
+      "id": "s1005",
+      "name": "Haziq Daniel Bin Zulkifli",
+      "noMaktab": "CB231072",
+      "className": "Form 3 Al-Farabi",
+      "gender": "Male",
+      "status": "Active",
+      "currentDemerit": 0
+    },
+    {
+      "id": "s1006",
+      "name": "Aina Sofea Binti Zainal",
+      "noMaktab": "CB231073",
+      "className": "Form 3 Al-Farabi",
+      "gender": "Female",
+      "status": "Active",
+      "currentDemerit": 0
+    },
+    {
+      "id": "s1007",
+      "name": "Irfan Zaki Bin Harun",
+      "noMaktab": "CB231074",
+      "className": "Form 2 Al-Ghazali",
+      "gender": "Male",
+      "status": "Active",
+      "currentDemerit": 0
+    },
+    {
+      "id": "s1008",
+      "name": "Puteri Liyana Binti Roslan",
+      "noMaktab": "CB231075",
+      "className": "Form 2 Al-Ghazali",
+      "gender": "Female",
+      "status": "Active",
+      "currentDemerit": 0
+    },
+    {
+      "id": "s1009",
+      "name": "Danial Haqim Bin Rahman",
+      "noMaktab": "CB231076",
+      "className": "Form 1 Al-Khwarizmi",
+      "gender": "Male",
+      "status": "Active",
+      "currentDemerit": 0
+    },
+    {
+      "id": "s1010",
+      "name": "Nurul Izzati Binti Kamal",
+      "noMaktab": "CB231077",
+      "className": "Form 1 Al-Khwarizmi",
+      "gender": "Female",
+      "status": "Active",
+      "currentDemerit": 0
+    },
+    {
+      "id": "s1011",
+      "name": "Amirul Hakim Bin Azman",
+      "noMaktab": "CB231078",
+      "className": "Form 4 Ibnu Khaldun",
+      "gender": "Male",
+      "status": "Active",
+      "currentDemerit": 0
+    },
+    {
+      "id": "s1012",
+      "name": "Syasya Nadira Binti Salleh",
+      "noMaktab": "CB231079",
+      "className": "Form 5 Al-Biruni",
+      "gender": "Female",
+      "status": "Active",
+      "currentDemerit": 0
+    }
+  ],
+  "offences": [
+    {
+      "id": "o1",
+      "title": "Pakaian Tidak Lengkap",
+      "category": "LDP",
+      "points": 5,
+      "enabled": true
+    },
+    {
+      "id": "o2",
+      "title": "Lambat Turun Roll Call",
+      "category": "LDP",
+      "points": 4,
+      "enabled": true
+    },
+    {
+      "id": "o3",
+      "title": "Menceroboh Asrama",
+      "category": "LDP",
+      "points": 12,
+      "enabled": true
+    },
+    {
+      "id": "o4",
+      "title": "Rambut Tidak Mengikut Peraturan",
+      "category": "LDP",
+      "points": 6,
+      "enabled": true
+    },
+    {
+      "id": "o5",
+      "title": "Bergaduh",
+      "category": "LDP",
+      "points": 15,
+      "enabled": true
+    },
+    {
+      "id": "o6",
+      "title": "Membazir Elektrik",
+      "category": "JPA",
+      "points": 4,
+      "enabled": true
+    },
+    {
+      "id": "o7",
+      "title": "Kiub / Bilik Kotor",
+      "category": "JPA",
+      "points": 3,
+      "enabled": true
+    },
+    {
+      "id": "o8",
+      "title": "Lewat Masuk Asrama",
+      "category": "JPA",
+      "points": 5,
+      "enabled": true
+    },
+    {
+      "id": "o9",
+      "title": "Tidak Ikut Jadual",
+      "category": "JPA",
+      "points": 6,
+      "enabled": true
+    },
+    {
+      "id": "o10",
+      "title": "Membawa Barang Larangan",
+      "category": "JPA",
+      "points": 10,
+      "enabled": true
+    }
+  ],
+  "reports": [
+    {
+      "id": "r1001",
+      "studentId": "s1001",
+      "offenceId": "o1",
+      "points": 5,
+      "reportedBy": "ldp01",
+      "reporterRole": "LDP",
+      "remarks": "Pakaian tidak mengikut spesifikasi semasa perhimpunan pagi.",
+      "status": "Approved",
+      "createdAt": "2026-07-29T07:35:00+08:00",
+      "updatedAt": "2026-07-29T07:40:00+08:00"
+    },
+    {
+      "id": "r1002",
+      "studentId": "s1003",
+      "offenceId": "o5",
+      "points": 15,
+      "reportedBy": "ldp01",
+      "reporterRole": "LDP",
+      "remarks": "Perbalahan kecil di kawasan kantin sekolah.",
+      "status": "Approved",
+      "createdAt": "2026-07-30T07:00:00+08:00",
+      "updatedAt": "2026-07-30T07:12:00+08:00"
+    },
+    {
+      "id": "r1003",
+      "studentId": "s1005",
+      "offenceId": "o6",
+      "points": 4,
+      "reportedBy": "jpa01",
+      "reporterRole": "JPA",
+      "remarks": "Lampu dan kipas bilik tidak dimatikan semasa keluar.",
+      "status": "Approved",
+      "createdAt": "2026-07-31T08:15:00+08:00",
+      "updatedAt": "2026-07-31T08:20:00+08:00"
+    },
+    {
+      "id": "r1004",
+      "studentId": "s1002",
+      "offenceId": "o2",
+      "points": 4,
+      "reportedBy": "ldp01",
+      "reporterRole": "LDP",
+      "remarks": "Lewat 15 minit ke padang kawal.",
+      "status": "Rejected",
+      "createdAt": "2026-07-28T09:50:00+08:00",
+      "updatedAt": "2026-07-28T10:10:00+08:00"
+    }
+  ],
+  "audit": [
+    {
+      "id": "a1",
+      "user": "teacher01",
+      "action": "Approved report r1001",
+      "time": "2026-07-29T07:40:00+08:00"
+    },
+    {
+      "id": "a2",
+      "user": "teacher01",
+      "action": "Approved report r1002",
+      "time": "2026-07-30T07:12:00+08:00"
+    },
+    {
+      "id": "a3",
+      "user": "teacher01",
+      "action": "Rejected report r1004",
+      "time": "2026-07-28T10:10:00+08:00"
+    }
+  ]
+}

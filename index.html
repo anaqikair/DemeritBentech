@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Demerit BenTech</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <div class="bg-blobs"></div>
+
+    <section id="loginView" class="login-screen">
+      <div class="login-card glass">
+        <div class="brand">
+          <div class="brand-mark">DB</div>
+          <div>
+            <h1>Demerit BenTech</h1>
+            <p>School Discipline & Demerit Management System</p>
+          </div>
+        </div>
+
+        <div class="hero-copy">
+          <span class="pill">Official System</span>
+          <h2>School Discipline & Demerit Management System</h2>
+          <p>Streamlined discipline recording, student lookup, and demerit tracking for JPA, LDP, and Teachers.</p>
+        </div>
+
+        <div class="login-form">
+          <label>
+            Role
+            <select id="loginRole"></select>
+          </label>
+          <label>
+            Username
+            <input id="loginUsername" type="text" placeholder="Enter username..." />
+          </label>
+          <label>
+            Password
+            <input id="loginPassword" type="password" placeholder="Enter password..." />
+          </label>
+          <label class="checkbox-label">
+            <input id="loginRememberMe" type="checkbox" /> Remember me on this device
+          </label>
+          <button id="loginBtn" class="btn btn-primary">Sign In</button>
+          <div class="demo-box">
+            <span class="demo-title">Quick Demo Login:</span>
+            <div class="demo-buttons">
+              <button type="button" class="btn btn-sm btn-ghost" onclick="quickDemoLogin('JPA', 'jpa01', 'password')">JPA</button>
+              <button type="button" class="btn btn-sm btn-ghost" onclick="quickDemoLogin('LDP', 'ldp01', 'password')">LDP</button>
+              <button type="button" class="btn btn-sm btn-ghost" onclick="quickDemoLogin('Admin', 'admin01', 'password')">Admin</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="mainView" class="main-shell hidden">
+      <aside class="sidebar glass">
+        <div class="sidebar-top">
+          <div class="brand compact">
+            <div class="brand-mark">DB</div>
+            <div>
+              <h1>Demerit BenTech</h1>
+              <p id="subtitleText">Prototype</p>
+            </div>
+          </div>
+
+          <div class="user-chip">
+            <div class="avatar" id="userAvatar">A</div>
+            <div>
+              <strong id="userName">User</strong>
+              <p id="userRole">Role</p>
+            </div>
+          </div>
+        </div>
+
+        <nav class="nav" id="navTabs"></nav>
+
+        <div class="sidebar-footer">
+          <button class="btn btn-danger" id="logoutBtn">Logout</button>
+        </div>
+      </aside>
+
+      <main class="content">
+        <header class="topbar glass">
+          <div>
+            <span class="pill" id="currentViewPill">Dashboard</span>
+            <h2 id="pageTitle">Overview</h2>
+            <p id="pageSub">See the latest discipline activity.</p>
+          </div>
+          <div class="topbar-actions">
+            <button id="quickSearchBtn" class="btn btn-ghost">Quick Search</button>
+            <button id="exportBtn" class="btn btn-primary">Export JSON</button>
+          </div>
+        </header>
+
+        <section id="viewOverview" class="view-stack"></section>
+        <section id="viewStudents" class="view-stack hidden"></section>
+        <section id="viewReports" class="view-stack hidden"></section>
+        <section id="viewPersonal" class="view-stack hidden"></section>
+        <section id="viewOffences" class="view-stack hidden"></section>
+        <section id="viewUsers" class="view-stack hidden"></section>
+        <section id="viewAudit" class="view-stack hidden"></section>
+        <section id="viewSettings" class="view-stack hidden"></section>
+      </main>
+    </section>
+
+    <div id="modalHost" class="modal-host hidden"></div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

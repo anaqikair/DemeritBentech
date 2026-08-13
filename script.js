@@ -16,9 +16,50 @@ const state = {
     currentView: 'overview',
     search: '',
     reportFilter: 'all',
-    activeCategory: 'all'
+    activeCategory: 'all',
+    hideReportForm: true
   }
 };
+
+// Simple Web Audio Synthesizer for UI sound feedback
+const audioCtx = typeof window !== 'undefined' ? new (window.AudioContext || window.webkitAudioContext)() : null;
+function playUiSound(type='click'){
+  if(!audioCtx) return;
+  try {
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    if(type === 'click'){
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.05);
+      gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.05);
+    } else if(type === 'success'){
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+      osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.08); // E5
+      osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.16); // G5
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.3);
+    } else if(type === 'error'){
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+      osc.frequency.linearRampToValueAtTime(110, audioCtx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.2);
+    }
+  } catch(e) {}
+}
 
 const ROLE_LABEL = { JPA: 'JPA', LDP: 'LDP', Admin: 'Admin' };
 
@@ -47,7 +88,7 @@ function scoreLabel(points){
 }
 function statusClass(s){ return String(s||'').toLowerCase(); }
 
-function saveState(){
+async function saveState(){
   const exportable = {
     users: state.users,
     students: state.students,
@@ -57,29 +98,43 @@ function saveState(){
     appMeta: state.appMeta
   };
   localStorage.setItem(DATA_KEY, JSON.stringify(exportable));
+
+  // Sync back to backend database.xlsx
+  try {
+    await fetch('/api/data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(exportable)
+    });
+  } catch(e) {
+    console.warn('Backend server save to database.xlsx failed or offline');
+  }
 }
 function saveSession(){
   if(state.session) localStorage.setItem(SESSION_KEY, JSON.stringify(state.session));
   else localStorage.removeItem(SESSION_KEY);
 }
-function loadLocalState(){
-  try{
-    const raw = localStorage.getItem(DATA_KEY);
-    if(raw){
-      const parsed = JSON.parse(raw);
-      if(Array.isArray(parsed.students) && parsed.students.length > 0){
+
+async function loadExcelData(){
+  try {
+    const res = await fetch('/api/data');
+    if(res.ok){
+      const data = await res.json();
+      if(Array.isArray(data.students) && data.students.length > 0){
         Object.assign(state, {
-          users: parsed.users || [],
-          students: parsed.students || [],
-          offences: parsed.offences || [],
-          reports: parsed.reports || [],
-          audit: parsed.audit || [],
-          appMeta: parsed.appMeta || {}
+          users: data.users || [],
+          students: data.students || [],
+          offences: data.offences || [],
+          reports: data.reports || [],
+          audit: data.audit || [],
+          appMeta: state.appMeta || {}
         });
         return true;
       }
     }
-  }catch(e){}
+  } catch(e) {
+    console.warn('Could not load database.xlsx from API, falling back to local/json');
+  }
   return false;
 }
 function loadSession(){
@@ -130,34 +185,50 @@ function getUser(){
   return state.users.find(u => u.username === state.session.username) || null;
 }
 
+function showLoginError(msg){
+  const el = byId('loginErrorMsg');
+  if(el){
+    el.textContent = msg;
+    el.classList.remove('hidden');
+  }
+  playUiSound('error');
+}
+
+function clearLoginError(){
+  const el = byId('loginErrorMsg');
+  if(el) el.classList.add('hidden');
+}
+
 function loginHandler(){
+  clearLoginError();
   const role = els.loginRole?.value || 'Admin';
   const username = els.loginUsername?.value.trim() || '';
   const password = els.loginPassword?.value || '';
   const remember = byId('loginRememberMe')?.checked || false;
 
   if(!username || !password){
-    alert('Please enter both username and password.');
+    showLoginError('Please enter both username and password.');
     return;
   }
 
   const user = state.users.find(u => u.username.toLowerCase() === username.toLowerCase());
   
   if(!user){
-    alert('Invalid credentials: Username not found.');
+    showLoginError('Incorrect username or password. User not found.');
     return;
   }
 
   if(user.password && user.password !== password){
-    alert('Invalid credentials: Password incorrect.');
+    showLoginError('Incorrect password. Please try again.');
     return;
   }
 
   if(user.role !== role){
-    alert(`Role mismatch: User "@${user.username}" is registered as "${user.role}", not "${role}". Please select role "${user.role}".`);
+    showLoginError(`Role mismatch: User "@${user.username}" is registered as "${user.role}", not "${role}". Select "${user.role}".`);
     return;
   }
 
+  playUiSound('success');
   state.session = { username: user.username, role: user.role, remember };
   saveSession();
   route(user.role === 'Admin' ? 'overview' : 'reports');
@@ -587,7 +658,8 @@ function openStudentProfile(id){
 
 function reportForm(role){
   const offences = roleOffenceList(role);
-  const isHidden = state.ui.hideReportForm || false;
+  // Default hide is ONLY for Admin role. JPA and LDP officers see form open by default.
+  const isHidden = role === 'Admin' ? (state.ui.hideReportForm !== false) : (state.ui.hideReportForm || false);
   return `
     <div class="card">
       <div class="section-head">
@@ -936,23 +1008,50 @@ function renderUsers(){
         </div>
       </div>
       <div class="card">
-        <h3>Accounts</h3>
+        <h3>Accounts (${users.length})</h3>
         <div id="userList" class="list" style="margin-top:14px"></div>
       </div>
     </div>
   `;
   const list = byId('userList');
-  list.innerHTML = users.map(u=>`
-    <div class="list-item">
-      <div class="item-top">
-        <div>
-          <div class="item-title">${escapeHtml(u.name || u.username)}</div>
-          <div class="muted small">@${escapeHtml(u.username)}</div>
+  list.innerHTML = users.map(u=>{
+    const userReports = state.reports.filter(r => r.reportedBy === u.username);
+    return `
+      <div class="list-item">
+        <div class="item-top">
+          <div>
+            <div class="item-title">${escapeHtml(u.name || u.username)}</div>
+            <div class="muted small">@${escapeHtml(u.username)} • Password: ${escapeHtml(u.password || '••••')}</div>
+            <div class="help" style="margin-top:4px;">Submissions: ${userReports.length} report(s)</div>
+          </div>
+          <div class="stack" style="align-items:flex-end">
+            <span class="badge">${u.role}</span>
+            <div class="actions" style="margin-top:6px">
+              <button class="btn btn-sm btn-ghost" data-action="view-user-history" data-username="${escapeHtml(u.username)}">View History</button>
+              <button class="btn btn-sm btn-ghost" data-action="edit-user" data-id="${u.id}">Edit</button>
+              <button class="btn btn-sm btn-danger" data-action="delete-user" data-id="${u.id}">Delete</button>
+            </div>
+          </div>
         </div>
-        <span class="badge">${u.role}</span>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
+
+  list.onclick = (e)=>{
+    const btn = e.target.closest('button[data-action]');
+    if(!btn) return;
+    const action = btn.dataset.action;
+    const id = btn.dataset.id;
+    const username = btn.dataset.username;
+
+    if(action === 'view-user-history'){
+      openUserHistoryModal(username);
+    } else if(action === 'edit-user'){
+      openEditUserModal(id);
+    } else if(action === 'delete-user'){
+      deleteUser(id);
+    }
+  };
 
   byId('addUserBtn').onclick = ()=>{
     if(role !== 'Admin'){ alert('Admin only.'); return; }
@@ -961,10 +1060,115 @@ function renderUsers(){
     const password = byId('newUserPassword').value.trim();
     const newRole = byId('newUserRole').value;
     if(!name || !username || !password){ alert('Fill all fields.'); return; }
-    if(state.users.some(u=>u.username===username)){ alert('Username already exists.'); return; }
+    if(state.users.some(u=>u.username.toLowerCase()===username.toLowerCase())){ alert('Username already exists.'); return; }
     state.users.unshift({id: uuid('u'), name, username, password, role:newRole});
-    saveState(); pushAudit(`Added user ${username}`); renderUsers();
+    saveState(); 
+    playUiSound('success');
+    pushAudit(`Added user ${username}`); 
+    renderUsers();
   };
+}
+
+function openEditUserModal(userId){
+  const u = state.users.find(x => x.id === userId);
+  if(!u) return;
+  openModal(`
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h3>Edit User @${escapeHtml(u.username)}</h3>
+          <p>Modify account name, role, or password.</p>
+        </div>
+        <button class="btn btn-sm btn-ghost" onclick="closeModal()">✕</button>
+      </div>
+      <div class="form-grid" style="margin-top:14px">
+        <div class="full"><label>Full Name<input id="editUserName" value="${escapeHtml(u.name || '')}"></label></div>
+        <div><label>Username<input id="editUserUsername" disabled value="${escapeHtml(u.username)}"></label></div>
+        <div><label>Password<input id="editUserPassword" value="${escapeHtml(u.password || '')}"></label></div>
+        <div class="full"><label>Role<select id="editUserRole">
+          <option ${u.role==='JPA'?'selected':''}>JPA</option>
+          <option ${u.role==='LDP'?'selected':''}>LDP</option>
+          <option ${u.role==='Admin'?'selected':''}>Admin</option>
+        </select></label></div>
+        <div class="full row" style="justify-content:flex-end; margin-top:10px;">
+          <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-primary" id="saveEditUserBtn">Save Changes</button>
+        </div>
+      </div>
+    </div>
+  `);
+
+  byId('saveEditUserBtn').onclick = ()=>{
+    const newName = byId('editUserName').value.trim();
+    const newPass = byId('editUserPassword').value.trim();
+    const newRole = byId('editUserRole').value;
+    if(!newName || !newPass){ alert('Name and password cannot be empty.'); return; }
+
+    u.name = newName;
+    u.password = newPass;
+    u.role = newRole;
+
+    saveState();
+    playUiSound('success');
+    pushAudit(`Updated user @${u.username}`);
+    closeModal();
+    renderUsers();
+  };
+}
+
+function deleteUser(userId){
+  const u = state.users.find(x => x.id === userId);
+  if(!u) return;
+  if(u.username === state.session?.username){
+    alert('You cannot delete your own active session account.');
+    return;
+  }
+  if(!confirm(`Are you sure you want to delete user "@${u.username}"?`)) return;
+
+  state.users = state.users.filter(x => x.id !== userId);
+  saveState();
+  playUiSound('error');
+  pushAudit(`Deleted user @${u.username}`);
+  renderUsers();
+}
+
+function openUserHistoryModal(username){
+  const user = state.users.find(u => u.username === username);
+  const userReports = state.reports.filter(r => r.reportedBy === username);
+
+  openModal(`
+    <div class="modal" style="max-width:700px;">
+      <div class="modal-header">
+        <div>
+          <h3>Activity History for @${escapeHtml(username)}</h3>
+          <p>${escapeHtml(user?.name || username)} (${escapeHtml(user?.role || 'User')}) • Total ${userReports.length} report(s) submitted.</p>
+        </div>
+        <button class="btn btn-sm btn-ghost" onclick="closeModal()">✕</button>
+      </div>
+      <div class="list" style="margin-top:16px; max-height:400px; overflow-y:auto;">
+        ${userReports.length ? userReports.map(r => {
+          const student = state.students.find(s=>s.id===r.studentId);
+          const offence = state.offences.find(o=>o.id===r.offenceId);
+          return `
+            <div class="list-item">
+              <div class="item-top">
+                <div>
+                  <div class="item-title">${escapeHtml(student?.name || 'Unknown Student')}</div>
+                  <div class="muted small">Offence: ${escapeHtml(offence?.title || 'Offence')} (${r.points || 0} pts)</div>
+                  <div class="help" style="margin-top:2px;">Submitted: ${formatDate(r.createdAt)}</div>
+                </div>
+                <span class="badge ${r.status==='Approved'?'good':r.status==='Pending'?'warn':'bad'}">${r.status}</span>
+              </div>
+              ${r.remarks ? `<div class="help" style="margin-top:6px;">Remarks: ${escapeHtml(r.remarks)}</div>` : ''}
+            </div>
+          `;
+        }).join('') : '<div class="muted">No reports submitted by this user yet.</div>'}
+      </div>
+      <div class="row" style="justify-content:flex-end; margin-top:16px;">
+        <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+      </div>
+    </div>
+  `);
 }
 
 function renderAudit(){
@@ -1131,7 +1335,7 @@ function render(){
   if(state.ui.currentView === 'audit') renderAudit();
   if(state.ui.currentView === 'settings') renderSettings();
 
-  // Role-based tab access
+  // Role-based tab access & Excel Export permission
   const allowed = {
     JPA: ['reports','personal'],
     LDP: ['reports','personal'],
@@ -1140,6 +1344,11 @@ function render(){
   qsa('.nav button').forEach(btn=>{
     btn.style.display = allowed[role]?.includes(btn.dataset.view) ? '' : 'none';
   });
+
+  const exportCsvBtn = byId('exportCsvBtn');
+  if(exportCsvBtn){
+    exportCsvBtn.style.display = role === 'Admin' ? '' : 'none';
+  }
 }
 
 function changeReportStatus(id, status){
@@ -1343,21 +1552,7 @@ function escapeHtml(str=''){
     .replaceAll("'",'&#039;');
 }
 
-function exportJson(){
-  const blob = new Blob([JSON.stringify({
-    app: state.appMeta,
-    users: state.users,
-    students: state.students,
-    offences: state.offences,
-    reports: state.reports,
-    audit: state.audit
-  }, null, 2)], {type:'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'demerit-bentech-export.json';
-  a.click();
-  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
-}
+
 
 function seedDemo(){
   localStorage.removeItem(DATA_KEY);
@@ -1374,6 +1569,7 @@ function resetLocal(){
 }
 
 function quickSearch(){
+  playUiSound('click');
   route('students');
   byId('studentSearchInput')?.focus();
 }
@@ -1390,6 +1586,14 @@ async function boot(){
   els.loginUsername?.addEventListener('keydown', handleEnter);
   els.loginPassword?.addEventListener('keydown', handleEnter);
 
+  // Global button sound feedback listener
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('button, .clickable, .nav button');
+    if(btn && !btn.id?.includes('loginBtn')) {
+      playUiSound('click');
+    }
+  });
+
   // Sync username field based on selected role dropdown to make demo easy
   els.loginRole?.addEventListener('change', (e) => {
     const r = e.target.value;
@@ -1402,17 +1606,16 @@ async function boot(){
 
   byId('loginBtn')?.addEventListener('click', loginHandler);
   byId('logoutBtn')?.addEventListener('click', logout);
-  byId('exportBtn')?.addEventListener('click', exportJson);
   byId('quickSearchBtn')?.addEventListener('click', quickSearch);
   byId('seedBtn')?.addEventListener('click', seedDemo);
   byId('resetBtn')?.addEventListener('click', resetLocal);
   byId('modalHost')?.addEventListener('click', (e)=>{ if(e.target.id === 'modalHost') closeModal(); });
 
-  const localFound = loadLocalState();
-  if(!localFound) await seedFromData();
+  const excelFound = await loadExcelData();
+  if(!excelFound) await seedFromData();
   loadSession();
   ensureScoreSync();
-  saveState();
+  await saveState();
 
   if(state.appMeta?.name){
     byId('subtitleText').textContent = `${state.appMeta.subtitle || 'System'} • ${state.appMeta.version || ''}`;

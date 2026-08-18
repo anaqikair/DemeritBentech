@@ -16,54 +16,73 @@
           <div class="brand-mark">DB</div>
           <div>
             <h1>Demerit BenTech</h1>
-            <p>School Discipline & Demerit Management System</p>
+            <p>Sistem Pengurusan Disiplin & Demerit Maktab</p>
           </div>
         </div>
 
         <div class="hero-copy">
-          <span class="pill">Official System</span>
-          <h2>School Discipline & Demerit Management System</h2>
-          <p>Streamlined discipline recording, student lookup, and demerit tracking for JPA, LDP, and Teachers.</p>
+          <span class="pill">Sistem Rasmi</span>
+          <h2>Sistem Pengurusan Disiplin & Demerit Maktab</h2>
+          <p>Perekodan disiplin, carian pelajar, dan pemantauan mata demerit untuk Pegawai LDP dan Guru.</p>
         </div>
 
         <div class="login-form">
           <label>
-            Role
+            Peranan
             <select id="loginRole"></select>
           </label>
           <label>
-            Username
-            <input id="loginUsername" type="text" placeholder="Enter username..." />
+            Nama Pengguna (Username)
+            <input id="loginUsername" type="text" placeholder="Masukkan nama pengguna..." />
           </label>
           <label>
-            Password
-            <input id="loginPassword" type="password" placeholder="Enter password..." />
+            Kata Laluan (Password)
+            <input id="loginPassword" type="password" placeholder="Masukkan kata laluan..." />
           </label>
           <label class="checkbox-label">
-            <input id="loginRememberMe" type="checkbox" /> Remember me on this device
+            <input id="loginRememberMe" type="checkbox" /> Ingat saya pada peranti ini
           </label>
           <div id="loginErrorMsg" class="login-error hidden"></div>
-          <button id="loginBtn" class="btn btn-primary">Sign In</button>
+          <button id="loginBtn" class="btn btn-primary">Log Masuk</button>
         </div>
       </div>
     </section>
 
     <section id="mainView" class="main-shell hidden">
-      <aside class="sidebar glass">
+      <div id="mobileHeader" class="mobile-header glass">
+        <div class="brand compact">
+          <div class="brand-mark">DB</div>
+          <div>
+            <h1>Demerit BenTech</h1>
+            <p id="mobileSubtitleText">Prototip</p>
+          </div>
+        </div>
+        <button id="mobileMenuBtn" class="btn btn-ghost btn-icon" aria-label="Buka Menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div id="sidebarBackdrop" class="sidebar-backdrop hidden"></div>
+
+      <aside id="appSidebar" class="sidebar glass">
         <div class="sidebar-top">
           <div class="brand compact">
             <div class="brand-mark">DB</div>
             <div>
               <h1>Demerit BenTech</h1>
-              <p id="subtitleText">Prototype</p>
+              <p id="subtitleText">Prototip</p>
             </div>
           </div>
 
           <div class="user-chip">
             <div class="avatar" id="userAvatar">A</div>
             <div>
-              <strong id="userName">User</strong>
-              <p id="userRole">Role</p>
+              <strong id="userName">Pengguna</strong>
+              <p id="userRole">Peranan</p>
             </div>
           </div>
         </div>
@@ -71,21 +90,9 @@
         <nav class="nav" id="navTabs"></nav>
 
         <div class="sidebar-footer">
-          <button class="btn btn-danger" id="logoutBtn">Logout</button>
+          <button class="btn btn-danger" id="logoutBtn">Log Keluar</button>
         </div>
       </aside>
-
-      <main class="content">
-        <header class="topbar glass">
-          <div>
-            <span class="pill" id="currentViewPill">Dashboard</span>
-            <h2 id="pageTitle">Overview</h2>
-            <p id="pageSub">See the latest discipline activity.</p>
-          </div>
-          <div class="topbar-actions">
-            <button id="quickSearchBtn" class="btn btn-ghost">Quick Search</button>
-          </div>
-        </header>
 
         <section id="viewOverview" class="view-stack"></section>
         <section id="viewStudents" class="view-stack hidden"></section>

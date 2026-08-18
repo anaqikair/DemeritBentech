@@ -1,9 +1,4 @@
 {
-  "app": {
-    "name": "Demerit BenTech",
-    "subtitle": "School Discipline & Demerit Management System",
-    "version": "2.0 Prototype"
-  },
   "users": [
     {
       "id": "u1",
@@ -42,7 +37,7 @@
       "className": "Form 4 Ibnu Khaldun",
       "gender": "Male",
       "status": "Active",
-      "currentDemerit": 0
+      "currentDemerit": 1600
     },
     {
       "id": "s1002",
@@ -51,7 +46,7 @@
       "className": "Form 4 Ibnu Khaldun",
       "gender": "Female",
       "status": "Active",
-      "currentDemerit": 0
+      "currentDemerit": 350
     },
     {
       "id": "s1003",
@@ -105,7 +100,7 @@
       "className": "Form 2 Al-Ghazali",
       "gender": "Female",
       "status": "Active",
-      "currentDemerit": 0
+      "currentDemerit": 50
     },
     {
       "id": "s1009",
@@ -147,75 +142,256 @@
   "offences": [
     {
       "id": "o1",
-      "title": "Pakaian Tidak Lengkap",
+      "title": "Ceroboh asrama",
       "category": "LDP",
-      "points": 5,
+      "points": 500,
       "enabled": true
     },
     {
       "id": "o2",
-      "title": "Lambat Turun Roll Call",
+      "title": "Gagal hadir ke perhimpunan pagi atau malam",
       "category": "LDP",
-      "points": 4,
+      "points": 300,
       "enabled": true
     },
     {
       "id": "o3",
-      "title": "Menceroboh Asrama",
+      "title": "Gagal hadir ke program rasmi maktab",
       "category": "LDP",
-      "points": 12,
+      "points": 300,
       "enabled": true
     },
     {
       "id": "o4",
-      "title": "Rambut Tidak Mengikut Peraturan",
+      "title": "Gagal hadir ke surau",
       "category": "LDP",
-      "points": 6,
+      "points": 300,
       "enabled": true
     },
     {
       "id": "o5",
-      "title": "Bergaduh",
+      "title": "Lewat kosongkan asrama",
       "category": "LDP",
-      "points": 15,
+      "points": 50,
       "enabled": true
     },
     {
       "id": "o6",
-      "title": "Membazir Elektrik",
-      "category": "JPA",
-      "points": 4,
+      "title": "Lewat hadir ke mana program rasmi maktab",
+      "category": "LDP",
+      "points": 50,
       "enabled": true
     },
     {
       "id": "o7",
-      "title": "Kiub / Bilik Kotor",
-      "category": "JPA",
-      "points": 3,
+      "title": "Pakaian",
+      "category": "LDP",
+      "points": 50,
       "enabled": true
     },
     {
       "id": "o8",
-      "title": "Lewat Masuk Asrama",
-      "category": "JPA",
-      "points": 5,
-      "enabled": true
-    },
-    {
-      "id": "o9",
-      "title": "Tidak Ikut Jadual",
-      "category": "JPA",
-      "points": 6,
-      "enabled": true
-    },
-    {
-      "id": "o10",
-      "title": "Membawa Barang Larangan",
-      "category": "JPA",
-      "points": 10,
+      "title": "Kekemasan diri",
+      "category": "LDP",
+      "points": 50,
       "enabled": true
     }
   ],
-  "reports": [],
-  "audit": []
+  "reports": [
+    {
+      "id": "r7y80vi5reh",
+      "studentId": "s1001",
+      "offenceId": "o1",
+      "points": 500,
+      "reportedBy": "ldp01",
+      "reporterRole": "LDP",
+      "remarks": "",
+      "status": "Approved",
+      "createdAt": "2026-08-18T16:43:02.009Z",
+      "updatedAt": "2026-08-18T16:43:22.445Z"
+    },
+    {
+      "id": "r22rrmb16lr",
+      "studentId": "s1002",
+      "offenceId": "o4",
+      "points": 300,
+      "reportedBy": "ldp01",
+      "reporterRole": "LDP",
+      "remarks": "",
+      "status": "Approved",
+      "createdAt": "2026-08-18T16:39:28.431Z",
+      "updatedAt": "2026-08-18T16:39:48.802Z"
+    },
+    {
+      "id": "r3zctzs12zt",
+      "studentId": "s1002",
+      "offenceId": "o7",
+      "points": 50,
+      "reportedBy": "ldp01",
+      "reporterRole": "LDP",
+      "remarks": "",
+      "status": "Approved",
+      "createdAt": "2026-08-18T16:39:23.753Z",
+      "updatedAt": "2026-08-18T16:39:47.865Z"
+    },
+    {
+      "id": "rnrow9fx43k",
+      "studentId": "s1008",
+      "offenceId": "o7",
+      "points": 50,
+      "reportedBy": "ldp01",
+      "reporterRole": "LDP",
+      "remarks": "",
+      "status": "Approved",
+      "createdAt": "2026-08-18T16:36:18.560Z",
+      "updatedAt": "2026-08-18T16:36:45.115Z"
+    },
+    {
+      "id": "rktww1mwzsu",
+      "studentId": "s1001",
+      "offenceId": "o7",
+      "points": 50,
+      "reportedBy": "ldp01",
+      "reporterRole": "LDP",
+      "remarks": "",
+      "status": "Approved",
+      "createdAt": "2026-08-18T16:36:12.990Z",
+      "updatedAt": "2026-08-18T16:36:45.115Z"
+    },
+    {
+      "id": "ri80mesjipq",
+      "studentId": "s1001",
+      "offenceId": "o1",
+      "points": 500,
+      "reportedBy": "ldp01",
+      "reporterRole": "LDP",
+      "remarks": "",
+      "status": "Approved",
+      "createdAt": "2026-08-18T16:25:44.318Z",
+      "updatedAt": "2026-08-18T16:26:02.566Z"
+    },
+    {
+      "id": "rckj8fuisye",
+      "studentId": "s1001",
+      "offenceId": "o1",
+      "points": 500,
+      "reportedBy": "ldp01",
+      "reporterRole": "LDP",
+      "remarks": "",
+      "status": "Approved",
+      "createdAt": "2026-08-02T09:54:32.342Z",
+      "updatedAt": "2026-08-02T09:54:59.358Z"
+    },
+    {
+      "id": "r9zlnz7iczc",
+      "studentId": "s1001",
+      "offenceId": "o6",
+      "points": 50,
+      "reportedBy": "jpa01",
+      "reporterRole": "JPA",
+      "remarks": "",
+      "status": "Approved",
+      "createdAt": "2026-08-02T09:54:11.640Z",
+      "updatedAt": "2026-08-02T09:54:59.358Z"
+    }
+  ],
+  "audit": [
+    {
+      "id": "a7i9x3w676m",
+      "user": "admin01",
+      "action": "Approved all 1 pending reports",
+      "time": "2026-08-18T16:43:22.462Z"
+    },
+    {
+      "id": "ao5vacn65hb",
+      "user": "admin01",
+      "action": "Edited report r7y80vi5reh",
+      "time": "2026-08-18T16:43:20.255Z"
+    },
+    {
+      "id": "a1nfcle602c",
+      "user": "admin01",
+      "action": "Approved report r7y80vi5reh",
+      "time": "2026-08-18T16:43:13.236Z"
+    },
+    {
+      "id": "aqimvjf5rep",
+      "user": "ldp01",
+      "action": "Created report r7y80vi5reh for s1001",
+      "time": "2026-08-18T16:43:02.017Z"
+    },
+    {
+      "id": "adgnhqu1mc4",
+      "user": "admin01",
+      "action": "Approved report r22rrmb16lr",
+      "time": "2026-08-18T16:39:48.820Z"
+    },
+    {
+      "id": "axw2lxz1lm3",
+      "user": "admin01",
+      "action": "Approved report r3zctzs12zt",
+      "time": "2026-08-18T16:39:47.883Z"
+    },
+    {
+      "id": "aw8po3u16ly",
+      "user": "ldp01",
+      "action": "Created report r22rrmb16lr for s1002",
+      "time": "2026-08-18T16:39:28.438Z"
+    },
+    {
+      "id": "a2vbc0i1301",
+      "user": "ldp01",
+      "action": "Created report r3zctzs12zt for s1002",
+      "time": "2026-08-18T16:39:23.761Z"
+    },
+    {
+      "id": "a7iynr3xolp",
+      "user": "admin01",
+      "action": "Approved all 2 pending reports",
+      "time": "2026-08-18T16:36:45.133Z"
+    },
+    {
+      "id": "aa76epax43s",
+      "user": "ldp01",
+      "action": "Created report rnrow9fx43k for s1008",
+      "time": "2026-08-18T16:36:18.568Z"
+    },
+    {
+      "id": "avbmddpwzt1",
+      "user": "ldp01",
+      "action": "Created report rktww1mwzsu for s1001",
+      "time": "2026-08-18T16:36:12.997Z"
+    },
+    {
+      "id": "a0cu75vjwt5",
+      "user": "admin01",
+      "action": "Approved all 1 pending reports",
+      "time": "2026-08-18T16:26:02.585Z"
+    },
+    {
+      "id": "a1dsx5jjipz",
+      "user": "ldp01",
+      "action": "Created report ri80mesjipq for s1001",
+      "time": "2026-08-18T16:25:44.327Z"
+    },
+    {
+      "id": "ad57qxmjdsx",
+      "user": "admin01",
+      "action": "Approved all 2 pending reports",
+      "time": "2026-08-02T09:54:59.361Z"
+    },
+    {
+      "id": "alpue2wisyh",
+      "user": "ldp01",
+      "action": "Created report rckj8fuisye for s1001",
+      "time": "2026-08-02T09:54:32.345Z"
+    },
+    {
+      "id": "ajx3uq5iczf",
+      "user": "jpa01",
+      "action": "Created report r9zlnz7iczc for s1001",
+      "time": "2026-08-02T09:54:11.643Z"
+    }
+  ],
+  "appMeta": {}
 }

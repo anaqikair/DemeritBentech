@@ -61,7 +61,7 @@ function playUiSound(type='click'){
   } catch(e) {}
 }
 
-const ROLE_LABEL = { JPA: 'JPA', LDP: 'LDP', Admin: 'Admin' };
+const ROLE_LABEL = { LDP: 'LDP', Admin: 'Admin' };
 
 const els = {};
 function byId(id){ return document.getElementById(id); }
@@ -82,9 +82,9 @@ function initials(name=''){
   return name.split(' ').filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase();
 }
 function scoreLabel(points){
-  if(points >= 50) return {text:'Critical', cls:'bad'};
-  if(points >= 25) return {text:'Watchlist', cls:'warn'};
-  return {text:'Normal', cls:'good'};
+  if(points >= 300) return {text:'Kritikal', cls:'bad'};
+  if(points >= 50) return {text:'Dalam Pemantauan', cls:'warn'};
+  return {text:'Biasa', cls:'good'};
 }
 function statusClass(s){ return String(s||'').toLowerCase(); }
 
@@ -99,7 +99,7 @@ async function saveState(){
   };
   localStorage.setItem(DATA_KEY, JSON.stringify(exportable));
 
-  // Sync back to backend database.xlsx
+  // Sync back to backend data.json
   try {
     await fetch('/api/data', {
       method: 'POST',
@@ -107,7 +107,7 @@ async function saveState(){
       body: JSON.stringify(exportable)
     });
   } catch(e) {
-    console.warn('Backend server save to database.xlsx failed or offline');
+    console.warn('Backend server save to data.json failed or offline');
   }
 }
 function saveSession(){
@@ -115,7 +115,7 @@ function saveSession(){
   else localStorage.removeItem(SESSION_KEY);
 }
 
-async function loadExcelData(){
+async function loadJsonData(){
   try {
     const res = await fetch('/api/data');
     if(res.ok){
@@ -127,14 +127,32 @@ async function loadExcelData(){
           offences: data.offences || [],
           reports: data.reports || [],
           audit: data.audit || [],
-          appMeta: state.appMeta || {}
+          appMeta: data.appMeta || {}
         });
         return true;
       }
     }
   } catch(e) {
-    console.warn('Could not load database.xlsx from API, falling back to local/json');
+    console.warn('Could not load data.json from API, checking localStorage fallback');
   }
+
+  try {
+    const localRaw = localStorage.getItem(DATA_KEY);
+    if(localRaw){
+      const data = JSON.parse(localRaw);
+      if(Array.isArray(data.users) && data.users.length > 0){
+        Object.assign(state, {
+          users: data.users || [],
+          students: data.students || [],
+          offences: data.offences || [],
+          reports: data.reports || [],
+          audit: data.audit || [],
+          appMeta: data.appMeta || {}
+        });
+        return true;
+      }
+    }
+  } catch(e) {}
   return false;
 }
 function loadSession(){
@@ -170,7 +188,12 @@ function ensureScoreSync(){
   // Recompute student current demerit from approved reports to keep data consistent
   const approved = state.reports.filter(r => r.status === 'Approved');
   const totals = new Map(state.students.map(s => [s.id, 0]));
-  approved.forEach(r => totals.set(r.studentId, (totals.get(r.studentId) || 0) + Number(r.points || 0)));
+  approved.forEach(r => {
+    const off = state.offences.find(o => o.id === r.offenceId);
+    const pts = off ? off.points : Number(r.points || 0);
+    r.points = pts; // keep report points in sync with official offence catalog
+    totals.set(r.studentId, (totals.get(r.studentId) || 0) + pts);
+  });
   state.students.forEach(s => { s.currentDemerit = totals.get(s.id) || 0; });
 }
 
@@ -201,7 +224,6 @@ function clearLoginError(){
 
 function loginHandler(){
   clearLoginError();
-  const role = els.loginRole?.value || 'Admin';
   const username = els.loginUsername?.value.trim() || '';
   const password = els.loginPassword?.value || '';
   const remember = byId('loginRememberMe')?.checked || false;
@@ -223,10 +245,8 @@ function loginHandler(){
     return;
   }
 
-  if(user.role !== role){
-    showLoginError(`Role mismatch: User "@${user.username}" is registered as "${user.role}", not "${role}". Select "${user.role}".`);
-    return;
-  }
+  // Update role select UI to match user's actual registered role
+  if(els.loginRole) els.loginRole.value = user.role;
 
   playUiSound('success');
   state.session = { username: user.username, role: user.role, remember };
@@ -252,9 +272,31 @@ function logout(){
   hideApp();
 }
 
+function render(){
+  const v = state.ui.currentView;
+  if(v === 'overview') renderOverview();
+  else if(v === 'students') renderStudents();
+  else if(v === 'reports') renderReports();
+  else if(v === 'personal') renderPersonal();
+  else if(v === 'offences') renderOffences();
+  else if(v === 'users') renderUsers();
+  else if(v === 'audit') renderAudit();
+  else if(v === 'settings') renderSettings();
+}
+
+function toggleMobileMenu(show){
+  const sidebar = byId('appSidebar');
+  const backdrop = byId('sidebarBackdrop');
+  if(!sidebar || !backdrop) return;
+  const isShow = show !== undefined ? show : !sidebar.classList.contains('mobile-open');
+  sidebar.classList.toggle('mobile-open', isShow);
+  backdrop.classList.toggle('hidden', !isShow);
+}
+
 function route(view){
+  toggleMobileMenu(false);
   const role = state.session?.role;
-  // If JPA/LDP and view is overview/students/settings, default to 'reports'
+  // If non-Admin and view is overview/students/settings, default to 'reports'
   if(role !== 'Admin' && ['overview','students','offences','users','audit','settings'].includes(view)){
     view = 'reports';
   }
@@ -269,20 +311,6 @@ function route(view){
   const el = byId(map[view] || 'viewReports');
   if(el) el.classList.remove('hidden');
 
-  const titles = {
-    overview: ['Overview', 'Latest discipline activity and rankings.'],
-    students: ['Students', 'Search students and view discipline history.'],
-    reports: ['Report Offence', 'Submit and record student discipline offences.'],
-    personal: ['Personal Info', 'Summary of submitted reports and activity statistics.'],
-    offences: ['Offences', 'Manage discipline offences and demerit values.'],
-    users: ['Users', 'Manage accounts and roles.'],
-    audit: ['Audit Log', 'Track every important action.'],
-    settings: ['Settings', 'System tools and data controls.']
-  };
-  const [title, sub] = titles[view] || titles.reports;
-  byId('pageTitle').textContent = title;
-  byId('pageSub').textContent = sub;
-  byId('currentViewPill').textContent = title;
   render();
 }
 
@@ -297,13 +325,14 @@ function showApp(){
   render();
 }
 function hideApp(){
+  toggleMobileMenu(false);
   byId('mainView').classList.add('hidden');
   byId('loginView').classList.remove('hidden');
 }
 
 function buildLoginRoles(){
   els.loginRole.innerHTML = '';
-  ['JPA','LDP','Admin'].forEach(r=>{
+  ['LDP','Admin'].forEach(r=>{
     const opt = document.createElement('option');
     opt.value = r;
     opt.textContent = r;
@@ -317,19 +346,18 @@ function buildNav(){
 
   if(role === 'Admin'){
     links = [
-      ['overview', 'Overview'],
-      ['students', 'Students'],
-      ['reports', 'Reports'],
-      ['offences', 'Offences'],
-      ['users', 'Users'],
-      ['audit', 'Audit'],
-      ['settings', 'Settings']
+      ['overview', 'Gambaran Keseluruhan'],
+      ['students', 'Senarai Pelajar'],
+      ['reports', 'Laporan Kesalahan'],
+      ['offences', 'Kategori Kesalahan'],
+      ['users', 'Pengguna'],
+      ['audit', 'Log Audit'],
+      ['settings', 'Tetapan']
     ];
   } else {
-    // For JPA and LDP: only "Report Offence" and "Personal Info" (My Activity)
     links = [
-      ['reports', 'Report Offence'],
-      ['personal', 'Personal Info']
+      ['reports', 'Rekod Kesalahan'],
+      ['personal', 'Maklumat Peribadi']
     ];
   }
 
@@ -353,25 +381,25 @@ function statCards(){
 
   return `
     <div class="grid-4">
-      <div class="metric"><div class="kicker">Students</div><div class="value">${state.students.length}</div><div class="label">Loaded from JSON</div></div>
-      <div class="metric"><div class="kicker">Pending</div><div class="value">${pending}</div><div class="label">Awaiting review</div></div>
-      <div class="metric"><div class="kicker">Approved</div><div class="value">${approved}</div><div class="label">Official records</div></div>
-      <div class="metric"><div class="kicker">Critical</div><div class="value">${critical}</div><div class="label">High demerit students</div></div>
+      <div class="metric"><div class="kicker">Pelajar</div><div class="value">${state.students.length}</div><div class="label">Didaftarkan</div></div>
+      <div class="metric"><div class="kicker">Belum Disahkan</div><div class="value">${pending}</div><div class="label">Dalam semakan</div></div>
+      <div class="metric"><div class="kicker">Diluluskan</div><div class="value">${approved}</div><div class="label">Rekod rasmi</div></div>
+      <div class="metric"><div class="kicker">Kritikal</div><div class="value">${critical}</div><div class="label">Demerit tinggi</div></div>
     </div>
     <div class="grid-3">
       <div class="card">
-        <div class="space-between"><div><div class="kicker">Top Demerit</div><h3 class="title">${top ? top.name : '-'}</h3></div><span class="badge ${top ? scoreLabel(top.currentDemerit).cls : ''}">${top ? top.currentDemerit : 0}</span></div>
+        <div class="space-between"><div><div class="kicker">Mata Demerit Tertinggi</div><h3 class="title">${top ? top.name : '-'}</h3></div><span class="badge ${top ? scoreLabel(top.currentDemerit).cls : ''}">${top ? top.currentDemerit : 0}</span></div>
         <div class="help">${top ? top.className : ''}</div>
       </div>
       <div class="card">
-        <div class="kicker">Repeat Offences</div>
+        <div class="kicker">Kesalahan Berulang</div>
         <h3 class="title">${repeatOffenceCount()}</h3>
-        <div class="help">Students with 2+ approved reports</div>
+        <div class="help">Pelajar dengan 2+ laporan diluluskan</div>
       </div>
       <div class="card">
-        <div class="kicker">Today</div>
-        <h3 class="title">${todayReports().length} reports</h3>
-        <div class="help">Created in this demo</div>
+        <div class="kicker">Hari Ini</div>
+        <h3 class="title">${todayReports().length} laporan</h3>
+        <div class="help">Direkodkan hari ini</div>
       </div>
     </div>`;
 }
@@ -415,10 +443,10 @@ function renderOverview(){
       <div class="card">
         <div class="section-head">
           <div>
-            <h3>Top Demerit Ranking</h3>
-            <p>Students with the highest current demerit.</p>
+            <h3>Kedudukan Demerit Tertinggi</h3>
+            <p>Pelajar dengan jumlah mata demerit tertinggi.</p>
           </div>
-          <button class="btn btn-sm btn-ghost" id="goStudentsBtn">Open Students</button>
+          <button class="btn btn-sm btn-ghost" id="goStudentsBtn">Lihat Pelajar</button>
         </div>
         <div class="list" style="margin-top:14px">
           ${topStudents.map((s,i)=>`
@@ -429,7 +457,7 @@ function renderOverview(){
                   <div class="muted small">${s.noMaktab} • ${s.className}</div>
                 </div>
                 <div class="chips">
-                  <span class="badge ${scoreLabel(s.currentDemerit).cls}">${s.currentDemerit} pts</span>
+                  <span class="badge ${scoreLabel(s.currentDemerit).cls}">${s.currentDemerit} mata</span>
                   <span class="chip">${scoreLabel(s.currentDemerit).text}</span>
                 </div>
               </div>
@@ -440,8 +468,8 @@ function renderOverview(){
       <div class="card">
         <div class="section-head">
           <div>
-            <h3>Most Common Violations</h3>
-            <p>Based on approved reports.</p>
+            <h3>Kesalahan Paling Kerap</h3>
+            <p>Berdasarkan laporan yang telah diluluskan.</p>
           </div>
         </div>
         <div class="bar-chart" style="margin-top:14px">
@@ -451,13 +479,13 @@ function renderOverview(){
               <div class="bar-track"><div class="bar-fill" style="width:${Math.max(8,(val/maxOff)*100)}%"></div></div>
               <span>${val}</span>
             </div>
-          `).join('') : '<div class="muted">No approved reports yet.</div>'}
+          `).join('') : '<div class="muted">Tiada laporan diluluskan lagi.</div>'}
         </div>
       </div>
     </div>
     <div class="grid-2">
       <div class="card">
-        <h3>Reports by Class</h3>
+        <h3>Laporan Mengikut Kelas</h3>
         <div class="stack" style="margin-top:14px">
           ${classes.map(([name,val])=>`
             <div class="space-between">
@@ -468,13 +496,13 @@ function renderOverview(){
         </div>
       </div>
       <div class="card">
-        <h3>Quick Status</h3>
+        <h3>Status Ringkas</h3>
         <div class="row" style="margin-top:12px">
           <div class="ring"><div>${state.reports.filter(r=>r.status==='Approved').length}</div></div>
           <div class="stack">
-            <div><span class="badge good">Approved</span> ${state.reports.filter(r=>r.status==='Approved').length}</div>
-            <div><span class="badge warn">Pending</span> ${state.reports.filter(r=>r.status==='Pending').length}</div>
-            <div><span class="badge bad">Rejected</span> ${state.reports.filter(r=>r.status==='Rejected').length}</div>
+            <div><span class="badge good">Diluluskan</span> ${state.reports.filter(r=>r.status==='Approved').length}</div>
+            <div><span class="badge warn">Dalam Semakan</span> ${state.reports.filter(r=>r.status==='Pending').length}</div>
+            <div><span class="badge bad">Ditolak</span> ${state.reports.filter(r=>r.status==='Rejected').length}</div>
           </div>
         </div>
       </div>
@@ -503,24 +531,24 @@ function renderStudents(){
       <div class="card">
         <div class="section-head">
           <div>
-            <h3>Search Student</h3>
-            <p>Select a student to view their individual overview & demerit records.</p>
+            <h3>Carian Pelajar</h3>
+            <p>Pilih seorang pelajar untuk melihat gambaran individu & rekod demerit.</p>
           </div>
-          <span class="chip">${list.length} results</span>
+          <span class="chip">${list.length} keputusannya</span>
         </div>
         <div class="searchbar" style="margin-top:14px">
-          <input id="studentSearchInput" placeholder="Type name / No. Maktab..." value="${escapeHtml(state.ui.search)}" />
-          <button class="btn btn-primary" id="clearSearchBtn">Clear</button>
+          <input id="studentSearchInput" placeholder="Taip nama / No. Maktab..." value="${escapeHtml(state.ui.search)}" />
+          <button class="btn btn-primary" id="clearSearchBtn">Padam</button>
         </div>
         <div class="search-results" id="studentResults" style="margin-top:14px"></div>
       </div>
       <div class="card">
         <div class="section-head">
           <div>
-            <h3>Individual Student Overview</h3>
-            <p>Comprehensive report breakdown for selected student.</p>
+            <h3>Gambaran Keseluruhan Pelajar</h3>
+            <p>Pecahan laporan lengkap bagi pelajar yang dipilih.</p>
           </div>
-          ${state.selectedStudentId ? '<button class="btn btn-sm btn-ghost" id="openProfileBtn">Full Modal</button>' : ''}
+          ${state.selectedStudentId ? '<button class="btn btn-sm btn-ghost" id="openProfileBtn">Profil Penuh</button>' : ''}
         </div>
         <div id="studentPreview" style="margin-top:14px"></div>
       </div>
@@ -607,43 +635,45 @@ function studentPreview(s){
             <div class="muted small">${escapeHtml(s.noMaktab)} • ${escapeHtml(s.className)}</div>
           </div>
         </div>
-        <span class="badge ${score.cls}">${s.currentDemerit || 0} points</span>
+        <span class="badge ${score.cls}">${s.currentDemerit || 0} mata</span>
       </div>
       <div class="hr"></div>
       <div class="grid-3">
-        <div class="metric"><div class="kicker">Approved</div><div class="value">${approved.length}</div><div class="label">Confirmed offences</div></div>
-        <div class="metric"><div class="kicker">Pending</div><div class="value">${pending.length}</div><div class="label">Under review</div></div>
-        <div class="metric"><div class="kicker">Rejected</div><div class="value">${rejected.length}</div><div class="label">Dismissed</div></div>
+        <div class="metric"><div class="kicker">Diluluskan</div><div class="value">${approved.length}</div><div class="label">Kesalahan sah</div></div>
+        <div class="metric"><div class="kicker">Dalam Semakan</div><div class="value">${pending.length}</div><div class="label">Belum disahkan</div></div>
+        <div class="metric"><div class="kicker">Ditolak</div><div class="value">${rejected.length}</div><div class="label">Dibatalkan</div></div>
       </div>
       <div class="hr"></div>
       <div class="grid-3">
-        <div><div class="kicker">Status</div><strong>${escapeHtml(s.status || '-')}</strong></div>
-        <div><div class="kicker">Gender</div><strong>${escapeHtml(s.gender || '-')}</strong></div>
-        <div><div class="kicker">Risk Category</div><strong>${score.text}</strong></div>
+        <div><div class="kicker">Status</div><strong>${escapeHtml(s.status === 'Active' ? 'Aktif' : s.status || '-')}</strong></div>
+        <div><div class="kicker">Jantina</div><strong>${escapeHtml(s.gender === 'Male' ? 'Lelaki' : s.gender === 'Female' ? 'Perempuan' : s.gender || '-')}</strong></div>
+        <div><div class="kicker">Kategori Risiko</div><strong>${score.text}</strong></div>
       </div>
       <div class="hr"></div>
       <div class="space-between">
         <div>
-          <div class="kicker">Offence Breakdown & History</div>
-          <p class="help">Detailed record of reports submitted for ${escapeHtml(s.name.split(' ')[0])}.</p>
+          <div class="kicker">Pecahan Kesalahan & Sejarah</div>
+          <p class="help">Rekod terperinci laporan yang diserahkan untuk ${escapeHtml(s.name.split(' ')[0])}.</p>
         </div>
       </div>
       <div class="list" style="margin-top:12px; max-height: 400px; overflow-y: auto;">
         ${history.length ? history.map(r=>{
           const off = state.offences.find(o=>o.id===r.offenceId);
+          const pts = off ? off.points : (r.points || 0);
+          const statusText = r.status === 'Approved' ? 'Diluluskan' : r.status === 'Pending' ? 'Semakan' : 'Ditolak';
           return `
             <div class="list-item">
               <div class="item-top">
                 <div>
-                  <div class="item-title">${escapeHtml(off?.title || 'Unknown offence')}</div>
+                  <div class="item-title">${escapeHtml(off?.title || 'Kesalahan tidak diketahui')}</div>
                   <div class="muted small">${formatDate(r.createdAt)} • ${escapeHtml(r.reporterRole)} (${escapeHtml(r.reportedBy)})</div>
                 </div>
-                <span class="badge ${r.status==='Approved'?'good':r.status==='Pending'?'warn':'bad'}">${r.status} (${r.points} pts)</span>
+                <span class="badge ${r.status==='Approved'?'good':r.status==='Pending'?'warn':'bad'}">${statusText} (${pts} mata)</span>
               </div>
-              <div class="help" style="margin-top:4px;">${escapeHtml(r.remarks || 'No remarks provided.')}</div>
+              <div class="help" style="margin-top:4px;">${escapeHtml(r.remarks || 'Tiada catatan diberikan.')}</div>
             </div>
           `;
-        }).join('') : '<div class="muted">No offences recorded for this student.</div>'}
+        }).join('') : '<div class="muted">Tiada kesalahan direkodkan untuk pelajar ini.</div>'}
       </div>
     </div>
   `;
@@ -657,39 +687,39 @@ function openStudentProfile(id){
 }
 
 function reportForm(role){
+  if(role === 'Admin') return '';
   const offences = roleOffenceList(role);
-  // Default hide is ONLY for Admin role. JPA and LDP officers see form open by default.
-  const isHidden = role === 'Admin' ? (state.ui.hideReportForm !== false) : (state.ui.hideReportForm || false);
+  const isHidden = state.ui.hideReportForm || false;
   return `
     <div class="card">
       <div class="section-head">
         <div>
-          <h3>Create Report</h3>
-          <p>${role === 'Admin' ? 'Admin can create any report.' : `Create ${role} discipline reports.`}</p>
+          <h3>Rekod Kesalahan Baharu</h3>
+          <p>Borang rekod disiplin peranan ${role}.</p>
         </div>
         <div class="row">
           <span class="chip">${role}</span>
-          <button class="btn btn-sm btn-ghost" id="toggleReportFormBtn">${isHidden ? '▼ Show Form' : '▲ Hide Form'}</button>
+          <button class="btn btn-sm btn-ghost" id="toggleReportFormBtn">${isHidden ? '▼ Paparkan Borang' : '▲ Sembunyikan Borang'}</button>
         </div>
       </div>
       <div class="form-grid ${isHidden ? 'hidden' : ''}" style="margin-top:14px">
         <div class="full">
-          <label>Search Student<input id="reportStudentSearch" placeholder="Name / No. Maktab"></label>
+          <label>Cari Pelajar<input id="reportStudentSearch" placeholder="Cari Nama / No. Maktab..."></label>
           <div id="reportSearchResults" class="search-results"></div>
         </div>
         <div>
-          <label>Offence<select id="reportOffenceSelect">${offences.map(o=>`<option value="${o.id}">${escapeHtml(o.title)} (${o.points} pts)</option>`).join('')}</select></label>
-          <div class="help">Only active offences for this role are shown.</div>
+          <label>Kesalahan<select id="reportOffenceSelect">${offences.map(o=>`<option value="${o.id}">${escapeHtml(o.title)} (-${o.points})</option>`).join('')}</select></label>
+          <div class="help">Hanya kesalahan aktif untuk peranan ini dipaparkan.</div>
         </div>
         <div>
-          <label>Current Student<input id="reportSelectedStudent" disabled placeholder="Select a student first"></label>
+          <label>Pelajar Dipilih<input id="reportSelectedStudent" disabled placeholder="Sila pilih seorang pelajar dahulu"></label>
         </div>
         <div class="full">
-          <label>Remarks<textarea id="reportRemarks" placeholder="Write time, place, witness, notes..."></textarea></label>
+          <label>Catatan / Catatan Ringkas<textarea id="reportRemarks" placeholder="Tulis masa, tempat, saksi atau sebarang catatan..."></textarea></label>
         </div>
         <div class="full row">
-          <button class="btn btn-primary" id="submitReportBtn">Submit Report</button>
-          <span class="help">Saved as Pending first.</span>
+          <button class="btn btn-primary" id="submitReportBtn">Hantar Laporan</button>
+          <span class="help">Disimpan sebagai Semakan terlebih dahulu.</span>
         </div>
       </div>
     </div>
@@ -700,17 +730,18 @@ function reportRow(r){
   const student = state.students.find(s=>s.id===r.studentId);
   const offence = state.offences.find(o=>o.id===r.offenceId);
   const status = statusClass(r.status);
+  const statusMalay = r.status === 'Approved' ? 'Diluluskan' : r.status === 'Rejected' ? 'Ditolak' : 'Semakan';
   return `
     <tr>
       <td>${escapeHtml(student?.name || '-') }<div class="help">${escapeHtml(student?.noMaktab || '')}</div></td>
-      <td>${escapeHtml(offence?.title || '-')}<div class="help">${r.points || 0} pts</div></td>
+      <td>${escapeHtml(offence?.title || '-')}<div class="help">${r.points || 0} mata</div></td>
       <td>${escapeHtml(r.reporterRole || '-')}<div class="help">${escapeHtml(r.reportedBy || '')}</div></td>
-      <td><span class="status ${status}">${escapeHtml(r.status || '-')}</span></td>
+      <td><span class="status ${status}">${escapeHtml(statusMalay)}</span></td>
       <td>${formatDate(r.createdAt)}</td>
       <td>
         <div class="actions">
-          <button class="btn btn-sm btn-ghost" data-action="view-report" data-id="${r.id}">View</button>
-          ${state.session?.role === 'Admin' && r.status === 'Pending' ? `<button class="btn btn-sm btn-primary" data-action="approve" data-id="${r.id}">Approve</button><button class="btn btn-sm btn-danger" data-action="reject" data-id="${r.id}">Reject</button>` : ''}
+          <button class="btn btn-sm btn-ghost" data-action="view-report" data-id="${r.id}">Lihat</button>
+          ${state.session?.role === 'Admin' && r.status === 'Pending' ? `<button class="btn btn-sm btn-primary" data-action="approve" data-id="${r.id}">Lulus</button><button class="btn btn-sm btn-danger" data-action="reject" data-id="${r.id}">Tolak</button>` : ''}
           ${state.session?.role === 'Admin' ? `<button class="btn btn-sm btn-ghost" data-action="edit" data-id="${r.id}">Edit</button>` : ''}
         </div>
       </td>
@@ -718,22 +749,23 @@ function reportRow(r){
   `;
 }
 
-function approveAllPending(){
+async function approveAllPending(){
   const pendingReports = state.reports.filter(r => r.status === 'Pending');
   if(pendingReports.length === 0){
     alert('No pending reports to approve.');
     return;
   }
-  if(!confirm(`Approve all ${pendingReports.length} pending report(s)?`)) return;
-  pendingReports.forEach(r => {
-    r.status = 'Approved';
-    r.updatedAt = nowISO();
+  const count = pendingReports.length;
+  state.reports.forEach(r => {
+    if(r.status === 'Pending'){
+      r.status = 'Approved';
+      r.updatedAt = nowISO();
+    }
   });
   ensureScoreSync();
-  saveState();
-  pushAudit(`Approved all ${pendingReports.length} pending reports`);
-  renderReports();
-  alert(`Successfully approved ${pendingReports.length} pending report(s)!`);
+  await saveState();
+  pushAudit(`Approved all ${count} pending reports`);
+  render();
 }
 
 function renderReports(){
@@ -744,22 +776,24 @@ function renderReports(){
   const pending = state.reports.filter(r => r.status === 'Pending');
   const shown = canSeeAll ? state.reports : mine;
 
+  const showFormCard = role !== 'Admin';
+
   byId('viewReports').innerHTML = `
-    <div class="grid-2">
-      <div class="card">${reportForm(role)}</div>
+    <div class="${showFormCard ? 'grid-2' : 'stack'}">
+      ${showFormCard ? `<div class="card">${reportForm(role)}</div>` : ''}
       <div class="stack">
         <div class="card">
           <div class="section-head">
             <div>
-              <h3>Report Summary</h3>
-              <p>Pending / approved / rejected counts.</p>
+              <h3>Ringkasan Laporan</h3>
+              <p>Bilangan dalam semakan / diluluskan / ditolak.</p>
             </div>
-            ${canManage && pending.length > 0 ? `<button class="btn btn-sm btn-primary" id="approveAllBtn">Approve All (${pending.length})</button>` : ''}
+            ${canManage && pending.length > 0 ? `<button class="btn btn-sm btn-primary" id="approveAllBtn">Luluskan Semua (${pending.length})</button>` : ''}
           </div>
           <div class="grid-3" style="margin-top:12px">
-            <div class="metric"><div class="kicker">Pending</div><div class="value">${pending.length}</div><div class="label">Needs review</div></div>
-            <div class="metric"><div class="kicker">Mine</div><div class="value">${mine.length}</div><div class="label">My submissions</div></div>
-            <div class="metric"><div class="kicker">All</div><div class="value">${state.reports.length}</div><div class="label">Total records</div></div>
+            <div class="metric"><div class="kicker">Dalam Semakan</div><div class="value">${pending.length}</div><div class="label">Perlu disemak</div></div>
+            <div class="metric"><div class="kicker">Laporan Saya</div><div class="value">${mine.length}</div><div class="label">Rekod saya</div></div>
+            <div class="metric"><div class="kicker">Keseluruhan</div><div class="value">${state.reports.length}</div><div class="label">Jumlah rekod</div></div>
           </div>
         </div>
       </div>
@@ -768,26 +802,26 @@ function renderReports(){
     <div class="card">
       <div class="section-head">
         <div>
-          <h3>${canSeeAll ? 'All Reports' : 'My Reports'}</h3>
-          <p>${canManage ? 'Admin can manage every report.' : 'Only your own reports are visible here.'}</p>
+          <h3>${canSeeAll ? 'Semua Laporan Kesalahan' : 'Laporan Kesalahan Saya'}</h3>
+          <p>${canManage ? 'Admin boleh menguruskan setiap laporan.' : 'Hanya laporan anda dipaparkan di sini.'}</p>
         </div>
         <div class="row">
-          <button class="btn btn-sm btn-ghost ${state.ui.reportFilter==='all' ? 'active':''}" data-filter="all">All</button>
-          <button class="btn btn-sm btn-ghost ${state.ui.reportFilter==='pending' ? 'active':''}" data-filter="pending">Pending</button>
-          <button class="btn btn-sm btn-ghost ${state.ui.reportFilter==='approved' ? 'active':''}" data-filter="approved">Approved</button>
-          <button class="btn btn-sm btn-ghost ${state.ui.reportFilter==='rejected' ? 'active':''}" data-filter="rejected">Rejected</button>
+          <button class="btn btn-sm btn-ghost ${state.ui.reportFilter==='all' ? 'active':''}" data-filter="all">Semua</button>
+          <button class="btn btn-sm btn-ghost ${state.ui.reportFilter==='pending' ? 'active':''}" data-filter="pending">Semakan</button>
+          <button class="btn btn-sm btn-ghost ${state.ui.reportFilter==='approved' ? 'active':''}" data-filter="approved">Diluluskan</button>
+          <button class="btn btn-sm btn-ghost ${state.ui.reportFilter==='rejected' ? 'active':''}" data-filter="rejected">Ditolak</button>
         </div>
       </div>
       <div class="table-wrap" style="margin-top:14px">
         <table>
           <thead>
             <tr>
-              <th>Student</th>
-              <th>Offence</th>
-              <th>Reporter</th>
+              <th>Pelajar</th>
+              <th>Kesalahan</th>
+              <th>Pelapor</th>
               <th>Status</th>
-              <th>Date</th>
-              <th>Action</th>
+              <th>Tarikh</th>
+              <th>Tindakan</th>
             </tr>
           </thead>
           <tbody id="reportTableBody"></tbody>
@@ -796,16 +830,21 @@ function renderReports(){
     </div>
   `;
 
-  byId('toggleReportFormBtn')?.addEventListener('click', ()=>{
-    state.ui.hideReportForm = !state.ui.hideReportForm;
-    renderReports();
-  });
-
-  byId('approveAllBtn')?.addEventListener('click', approveAllPending);
-
-  if(!state.ui.hideReportForm){
-    wireReportForm();
+  if(showFormCard){
+    byId('toggleReportFormBtn')?.addEventListener('click', ()=>{
+      state.ui.hideReportForm = !state.ui.hideReportForm;
+      renderReports();
+    });
+    if(!state.ui.hideReportForm){
+      wireReportForm();
+    }
   }
+
+  const approveAllBtn = byId('approveAllBtn');
+  if(approveAllBtn){
+    approveAllBtn.onclick = () => approveAllPending();
+  }
+
   const body = byId('reportTableBody');
   let items = shown.slice().sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
   if(state.ui.reportFilter !== 'all') items = items.filter(r => r.status.toLowerCase() === state.ui.reportFilter);
@@ -852,6 +891,12 @@ function wireReportForm(){
         renderResults(searchInput.value);
         const s = state.students.find(x=>x.id===state.selectedStudentId);
         selectedBox.value = s ? `${s.name} • ${s.noMaktab}` : '';
+        // Automatically focus offence select dropdown and scroll form into view
+        const offenceSelect = byId('reportOffenceSelect');
+        if(offenceSelect){
+          offenceSelect.focus();
+          offenceSelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
       });
     });
     const s = state.students.find(x=>x.id===state.selectedStudentId);
@@ -889,7 +934,7 @@ function wireReportForm(){
 
 function renderOffences(){
   const role = state.session?.role;
-  const categories = ['LDP','JPA'];
+  const categories = ['LDP'];
   byId('viewOffences').innerHTML = `
     <div class="grid-2">
       <div class="card">
@@ -922,7 +967,7 @@ function renderOffences(){
       </div>
       <div class="card">
         <h3>Offence Library</h3>
-        <div class="help">Used in report forms for JPA and LDP.</div>
+        <div class="help">Used in discipline report forms for LDP Officers.</div>
         <div class="list" style="margin-top:14px" id="offenceList"></div>
       </div>
     </div>
@@ -1000,7 +1045,7 @@ function renderUsers(){
           <div><label>Full Name<input id="newUserName" placeholder="New user name"></label></div>
           <div><label>Username<input id="newUserUsername" placeholder="username"></label></div>
           <div><label>Password<input id="newUserPassword" placeholder="password" type="text"></label></div>
-          <div><label>Role<select id="newUserRole"><option>JPA</option><option>LDP</option><option>Admin</option></select></label></div>
+          <div><label>Role<select id="newUserRole"><option>LDP</option><option>Admin</option></select></label></div>
           <div class="full row">
             <button class="btn btn-primary" id="addUserBtn">Add User</button>
             <span class="help">Admin only.</span>
@@ -1086,7 +1131,6 @@ function openEditUserModal(userId){
         <div><label>Username<input id="editUserUsername" disabled value="${escapeHtml(u.username)}"></label></div>
         <div><label>Password<input id="editUserPassword" value="${escapeHtml(u.password || '')}"></label></div>
         <div class="full"><label>Role<select id="editUserRole">
-          <option ${u.role==='JPA'?'selected':''}>JPA</option>
           <option ${u.role==='LDP'?'selected':''}>LDP</option>
           <option ${u.role==='Admin'?'selected':''}>Admin</option>
         </select></label></div>
@@ -1351,13 +1395,13 @@ function render(){
   }
 }
 
-function changeReportStatus(id, status){
+async function changeReportStatus(id, status){
   const r = state.reports.find(x=>x.id===id);
   if(!r) return;
   r.status = status;
   r.updatedAt = nowISO();
   ensureScoreSync();
-  saveState();
+  await saveState();
   pushAudit(`${status} report ${id}`);
   render();
 }
@@ -1594,28 +1638,39 @@ async function boot(){
     }
   });
 
-  // Sync username field based on selected role dropdown to make demo easy
-  els.loginRole?.addEventListener('change', (e) => {
-    const r = e.target.value;
-    const defaultUser = state.users.find(u => u.role === r);
-    if(defaultUser && !els.loginUsername.value){
-      els.loginUsername.value = defaultUser.username;
-      els.loginPassword.value = defaultUser.password || 'password';
-    }
-  });
-
   byId('loginBtn')?.addEventListener('click', loginHandler);
   byId('logoutBtn')?.addEventListener('click', logout);
   byId('quickSearchBtn')?.addEventListener('click', quickSearch);
   byId('seedBtn')?.addEventListener('click', seedDemo);
   byId('resetBtn')?.addEventListener('click', resetLocal);
   byId('modalHost')?.addEventListener('click', (e)=>{ if(e.target.id === 'modalHost') closeModal(); });
+  byId('mobileMenuBtn')?.addEventListener('click', () => toggleMobileMenu());
+  byId('sidebarBackdrop')?.addEventListener('click', () => toggleMobileMenu(false));
 
-  const excelFound = await loadExcelData();
-  if(!excelFound) await seedFromData();
+  const jsonFound = await loadJsonData();
+  if(!jsonFound) await seedFromData();
   loadSession();
   ensureScoreSync();
   await saveState();
+
+  // Sync username field based on selected role dropdown to make demo easy
+  els.loginRole?.addEventListener('change', (e) => {
+    const r = e.target.value;
+    const defaultUser = state.users.find(u => u.role === r);
+    if(defaultUser){
+      els.loginUsername.value = defaultUser.username;
+      els.loginPassword.value = defaultUser.password || 'password';
+    }
+  });
+
+  // Pre-fill initial selected role credentials if username field is currently empty
+  if(els.loginRole && els.loginUsername && !els.loginUsername.value){
+    const defaultUser = state.users.find(u => u.role === els.loginRole.value);
+    if(defaultUser){
+      els.loginUsername.value = defaultUser.username;
+      els.loginPassword.value = defaultUser.password || 'password';
+    }
+  }
 
   if(state.appMeta?.name){
     byId('subtitleText').textContent = `${state.appMeta.subtitle || 'System'} • ${state.appMeta.version || ''}`;
